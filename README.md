@@ -24,7 +24,7 @@
 | 终端绘制 | 每帧 `print` 往下滚 | 备用屏 + **绝对定位** + 增量刷新 + 同步输出（不频闪） |
 | 运行时 | 要 Python + venv + 一堆 pin 死的包 | **单个 exe，双击即用** |
 | 依赖 | numpy / Pillow / requests / opencv | 纯 Rust：`nokhwa`(摄像头) + `ctrlc` + `terminal_size` |
-| 构建 | 各平台自己装环境 | GitHub Actions 原生 Windows 构建 |
+| 构建 | 各平台自己装环境 | GitHub Actions 原生 Windows 构建 + Release 直下 |
 
 ### 为什么「不频闪」值得单独说
 
@@ -38,6 +38,12 @@
 4. **同步输出** `ESC[?2026h/l`：整帧原子提交，看不到半帧
 
 外加**按终端高度自动收窄列数**，保证画面永远不触发滚动。
+
+## 下载
+
+**Windows x64**（双击即用，无需安装 Python/OpenCV）：
+
+https://github.com/dylan121322/img2txt-rs/releases/latest/download/img2txt.exe
 
 ## 用法
 
@@ -61,7 +67,10 @@ img2txt -h                  # 帮助
 ### 用 CI 构建（推荐，无需本地环境）
 
 推到 `main` 分支或手动触发 `workflow_dispatch`，Actions 会产出
-`img2txt-windows-x64` artifact；打 `v*` 标签则自动附加到 Release。
+`img2txt-windows-x64` artifact；打 `v*` 标签则自动附加到 Release（公开可下载）。
+
+CI 在 `windows-latest` 上原生 MSVC 构建，并跑 `img2txt.exe --help` 冒烟测试。
+macOS 版在本地 `cargo build --release` 即可（CI 暂未覆盖）。
 
 ### 本地构建
 
