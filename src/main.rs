@@ -32,6 +32,8 @@ img2txt —— 实时摄像头 / 图片 → 终端字符画
   -c, --camera <N>   摄像头索引（默认 0）
   -w, --width <N>    输出列数（默认跟随终端宽度，上限 100）
   -m, --mode <M>     half(默认) | ascii | braille
+      --cell-width N 每个字符占几列：1(默认) / 2。若画面被折成横条（终端把
+                     ▀ 这类歧义宽度字符当双宽渲染），改用 2
       --no-color     关闭颜色（half 会降级成 ascii）
       --list         列出摄像头后退出
   -h, --help         显示帮助
@@ -46,6 +48,7 @@ struct Args {
     mode: Mode,
     color: bool,
     list: bool,
+    cell_width: usize,
 }
 
 fn parse_args() -> Result<Args, String> {
@@ -55,6 +58,7 @@ fn parse_args() -> Result<Args, String> {
         mode: Mode::Half,
         color: true,
         list: false,
+        cell_width: 1,
     };
     let mut it = std::env::args().skip(1);
     while let Some(arg) = it.next() {
@@ -80,6 +84,14 @@ fn parse_args() -> Result<Args, String> {
                     return Err("宽度必须大于 0".into());
                 }
                 a.width = Some(n);
+            }
+            "--cell-width" => {
+                let v = it.next().ok_or("--cell-width 需要一个数字")?;
+                let n: usize = v.parse().map_err(|_| format!("--cell-width 需要数字：{v}"))?;
+                if !(1..=2).contains(&n) {
+                    return Err("--cell-width 只支持 1 或 2".into());
+                }
+                a.cell_width = n;
             }
             "-m" | "--mode" => {
                 let v = it.next().ok_or("--mode 需要一个值")?;
@@ -184,12 +196,13 @@ fn run() -> Result<(), String> {
         .map(|(tw, th)| (tw.0 as usize, th.0 as usize))
         .unwrap_or((80, 24));
 
-    let mut cols = args.width.unwrap_or_else(|| term_w.min(100));
+    let cw = args.cell_width;
+    let mut cols = args.width.unwrap_or_else(|| term_w.min(100) / cw);
     let max_rows = term_h.saturating_sub(1).max(4);
-    let max_cols = ((max_rows as f64 * 2.0 * w as f64 / h as f64) as usize).max(20);
-    if cols > max_cols {
-        cols = max_cols;
-    }
+    // 物理宽度不能超过终端列数；高度同理
+    let by_width = (term_w / cw).max(20);
+    let by_height = ((max_rows as f64 * w as f64 / (h as f64 * 0.5 * cw as f64)) as usize).max(20);
+    cols = cols.min(by_width).min(by_height).max(20);
 
     eprintln!(
         "img2txt {} · 摄像头 {} · {}x{} → {} 列 / {} 行 · {} fps · {} · Ctrl-C 退出",
@@ -198,14 +211,14 @@ fn run() -> Result<(), String> {
         w,
         h,
         cols,
-        render::rows_for(cols, w, h),
+        render::rows_for(cols, w, h, cw),
         fps as u32,
         args.mode.name()
     );
 
     let stdout = io::stdout();
     let mut out = stdout.lock();
-    let mut painter = Painter::new(args.color);
+    let mut painter = Painter::new(args.color, cw);
     painter.start(&mut out).map_err(io_msg)?;
 
     let mut raw = vec![0u8; w * h * 3];
@@ -232,7 +245,7 @@ fn run() -> Result<(), String> {
             break Err(format!("帧解码失败：{e}"));
         }
 
-        let canvas = render::render(&raw, w, h, cols, args.mode);
+        let canvas = render::render(&raw, w, h, cols, args.mode, cw);
         if let Err(e) = painter.draw(&mut out, &canvas) {
             break Err(io_msg(e));
         }

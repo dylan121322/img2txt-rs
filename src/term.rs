@@ -13,11 +13,17 @@ const ESC: &str = "\x1b[";
 pub struct Painter {
     prev: Option<Canvas>,
     color: bool,
+    /// 每个字符实际占几列（1=普通；2=终端把歧义宽度字符当双宽）
+    cell_width: usize,
 }
 
 impl Painter {
-    pub fn new(color: bool) -> Self {
-        Self { prev: None, color }
+    pub fn new(color: bool, cell_width: usize) -> Self {
+        Self {
+            prev: None,
+            color,
+            cell_width: cell_width.max(1),
+        }
     }
 
     /// 进入备用屏、隐藏光标、清屏。
@@ -90,7 +96,7 @@ impl Painter {
         s.push_str(ESC);
         s.push_str(&(r + 1).to_string());
         s.push(';');
-        s.push_str(&(from + 1).to_string());
+        s.push_str(&(from * self.cell_width + 1).to_string());
         s.push('H');
 
         let mut cur_fg: Option<[u8; 3]> = None;

@@ -73,15 +73,19 @@ pub struct Canvas {
     pub bg: Option<Vec<[u8; 3]>>,
 }
 
-/// 由列数推行数：终端字符宽高比约 1:2，所以纵向要除以 2 才不变形。
-pub fn rows_for(cols: usize, w: usize, h: usize) -> usize {
-    let v = cols as f64 * h as f64 / w as f64 * 0.5;
+/// 由列数推行数。
+///
+/// 普通终端字符宽高比约 1:2，所以要乘 0.5 才不变形。
+/// 如果终端把 `▀`（U+2580，East-Asian Ambiguous）当**双宽**渲染，
+/// 一个字符占两列，此时格子接近正方形，系数变成 1.0。
+pub fn rows_for(cols: usize, w: usize, h: usize, cell_width: usize) -> usize {
+    let v = cols as f64 * h as f64 / w as f64 * (0.5 * cell_width as f64);
     (v.round() as usize).max(1)
 }
 
-pub fn render(rgb: &[u8], w: usize, h: usize, cols: usize, mode: Mode) -> Canvas {
+pub fn render(rgb: &[u8], w: usize, h: usize, cols: usize, mode: Mode, cell_width: usize) -> Canvas {
     let cols = cols.max(1);
-    let rows = rows_for(cols, w, h);
+    let rows = rows_for(cols, w, h, cell_width);
     let (sx, sy) = mode.subpixels();
     let gw = cols * sx;
     let gh = rows * sy;

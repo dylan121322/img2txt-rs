@@ -54,6 +54,7 @@ img2txt -w 80 -m ascii      # 80 列、纯字符
 img2txt -m braille          # 盲文点阵，单色下细节最多
 img2txt --no-color          # 关闭颜色
 img2txt --list              # 列出可用摄像头
+img2txt --cell-width 2      # 画面被折成横条时用（见下）
 img2txt -h                  # 帮助
 ```
 
@@ -91,6 +92,20 @@ cargo build --release
 | `-m, --mode <M>` | `half`（默认）/ `ascii` / `braille` |
 | `--no-color` | 关闭颜色；`half` 会自动降级成 `ascii`（它的信息全在颜色里） |
 | `--list` | 列出摄像头后退出 |
+| `--cell-width <1\|2>` | 每个字符占几列。终端把 `▀`(U+2580) 这类 East-Asian **Ambiguous** 宽度字符当双宽渲染时，一行会被折成两行、画面变成横条 —— 改用 `2` 即可 |
+
+## 已知问题：画面变成横条
+
+`▀`（U+2580）的 Unicode East-Asian Width 是 **Ambiguous**。在中文/日文 locale
+（`LANG=zh_CN.UTF-8` 等）下，部分终端会把它按**双宽**渲染，于是每个字符占两列，
+一行 80 格实际占 160 列，被终端自动折行 —— 表现为整幅图被切成横条带。
+
+两种情况分开处理：
+
+```bash
+img2txt -m ascii            # 先诊断：全 ASCII 字符，若这个正常 → 就是 ▀ 的宽度问题
+img2txt --cell-width 2      # 确认后用它：按双宽渲染，同时自动把行数系数从 0.5 改成 1.0
+```
 
 ## License
 

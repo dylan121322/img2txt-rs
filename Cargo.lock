@@ -416,7 +416,7 @@ dependencies = [
 
 [[package]]
 name = "img2txt"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "ctrlc",
  "nokhwa",

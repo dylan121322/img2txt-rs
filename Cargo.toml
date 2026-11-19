@@ -1,6 +1,6 @@
 [package]
 name = "img2txt"
-version = "0.2.0"
+version = "0.2.1"
 edition = "2021"
 description = "实时摄像头/图片 → 终端字符画（yaochao/img_to_txt 的 Rust 重写）"
 license = "MIT"
