@@ -16,10 +16,7 @@ ctrlc = "3"
 
 [target.'cfg(windows)'.dependencies]
 # 打开 VT 转义序列 + 控制台 UTF-8（否则 ▀ 会变成乱码）
-windows-sys = { version = "0.59", features = [
-    "Win32_System_Console",
-    "Win32_Globalization",
-] }
+windows-sys = { version = "0.61", features = ["Win32_System_Console"] }
 
 [profile.release]
 opt-level = 3

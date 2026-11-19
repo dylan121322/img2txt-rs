@@ -98,10 +98,9 @@ fn parse_args() -> Result<Args, String> {
 
 #[cfg(windows)]
 fn platform_init() {
-    use windows_sys::Win32::Globalization::SetConsoleOutputCP;
     use windows_sys::Win32::System::Console::{
-        GetConsoleMode, GetStdHandle, SetConsoleMode, ENABLE_VIRTUAL_TERMINAL_PROCESSING,
-        STD_OUTPUT_HANDLE,
+        GetConsoleMode, GetStdHandle, SetConsoleMode, SetConsoleOutputCP,
+        ENABLE_VIRTUAL_TERMINAL_PROCESSING, STD_OUTPUT_HANDLE,
     };
     unsafe {
         let _ = SetConsoleOutputCP(65001); // UTF-8，否则 ▀ / 盲文会乱码
