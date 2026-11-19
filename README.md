@@ -55,6 +55,7 @@ img2txt -m braille          # 盲文点阵，单色下细节最多
 img2txt --no-color          # 关闭颜色
 img2txt --list              # 列出可用摄像头
 img2txt --cell-width 2      # 画面被折成横条时用（见下）
+img2txt -C 256              # 颜色错乱时强制 256 色
 img2txt -h                  # 帮助
 ```
 
@@ -93,6 +94,20 @@ cargo build --release
 | `--no-color` | 关闭颜色；`half` 会自动降级成 `ascii`（它的信息全在颜色里） |
 | `--list` | 列出摄像头后退出 |
 | `--cell-width <1\|2>` | 每个字符占几列。终端把 `▀`(U+2580) 这类 East-Asian **Ambiguous** 宽度字符当双宽渲染时，一行会被折成两行、画面变成横条 —— 改用 `2` 即可 |
+
+## 已知问题：颜色错乱
+
+macOS 的 **Terminal.app 不支持 24 位真彩色**（只到 256 色）。如果强行发
+`ESC[38;2;r;g;bm`，它会把 `2;r;g;b` 当成一串独立的 SGR 参数解析，结果就是颜色全乱。
+
+0.2.2 起默认 `--color auto`：只有 `COLORTERM` 明确含 `truecolor`/`24bit` 时才用
+24 位色，否则自动退回 **256 色**（`ESC[38;5;nm`，配合 6x6x6 色立方 + 24 级灰阶量化）。
+
+```bash
+img2txt -C 256         # 强制 256 色（Terminal.app 用户）
+img2txt -C truecolor   # 强制真彩色（iTerm2 / Windows Terminal / WezTerm）
+img2txt -C none        # 无色
+```
 
 ## 已知问题：画面变成横条
 

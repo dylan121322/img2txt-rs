@@ -15,7 +15,7 @@ use nokhwa::utils::{CameraIndex, RequestedFormat, RequestedFormatType};
 use nokhwa::Camera;
 
 use render::Mode;
-use term::Painter;
+use term::{ColorDepth, Painter};
 
 static STOP: AtomicBool = AtomicBool::new(false);
 
@@ -34,7 +34,9 @@ img2txt —— 实时摄像头 / 图片 → 终端字符画
   -m, --mode <M>     half(默认) | ascii | braille
       --cell-width N 每个字符占几列：1(默认) / 2。若画面被折成横条（终端把
                      ▀ 这类歧义宽度字符当双宽渲染），改用 2
-      --no-color     关闭颜色（half 会降级成 ascii）
+  -C, --color <D>    auto(默认) | truecolor | 256 | none
+                     macOS 的 Terminal.app 不支持真彩色，auto 会自动退回 256 色
+      --no-color     等同 --color none（half 会降级成 ascii）
       --list         列出摄像头后退出
   -h, --help         显示帮助
   -V, --version      显示版本
@@ -46,7 +48,7 @@ struct Args {
     camera: u32,
     width: Option<usize>,
     mode: Mode,
-    color: bool,
+    color: Option<ColorDepth>,
     list: bool,
     cell_width: usize,
 }
@@ -56,7 +58,7 @@ fn parse_args() -> Result<Args, String> {
         camera: 0,
         width: None,
         mode: Mode::Half,
-        color: true,
+        color: None,
         list: false,
         cell_width: 1,
     };
@@ -72,7 +74,14 @@ fn parse_args() -> Result<Args, String> {
                 std::process::exit(0);
             }
             "--list" => a.list = true,
-            "--no-color" => a.color = false,
+            "--no-color" => a.color = Some(ColorDepth::None),
+            "-C" | "--color" => {
+                let v = it.next().ok_or("--color 需要一个值")?;
+                a.color = Some(
+                    ColorDepth::parse(&v)
+                        .ok_or_else(|| format!("未知颜色深度：{v}（auto/truecolor/256/none）"))?,
+                );
+            }
             "-c" | "--camera" => {
                 let v = it.next().ok_or("--camera 需要一个数字")?;
                 a.camera = v.parse().map_err(|_| format!("摄像头索引不是数字：{v}"))?;
@@ -101,7 +110,7 @@ fn parse_args() -> Result<Args, String> {
             other => return Err(format!("未知参数：{other}\n\n{USAGE}")),
         }
     }
-    if !a.color && a.mode == Mode::Half {
+    if a.color == Some(ColorDepth::None) && a.mode == Mode::Half {
         // half 的信息全在颜色里（字符恒为 ▀），无色时必须降级
         a.mode = Mode::Ascii;
     }
@@ -197,6 +206,7 @@ fn run() -> Result<(), String> {
         .unwrap_or((80, 24));
 
     let cw = args.cell_width;
+    let depth = args.color.unwrap_or_else(ColorDepth::auto);
     let mut cols = args.width.unwrap_or_else(|| term_w.min(100) / cw);
     let max_rows = term_h.saturating_sub(1).max(4);
     // 物理宽度不能超过终端列数；高度同理
@@ -213,12 +223,12 @@ fn run() -> Result<(), String> {
         cols,
         render::rows_for(cols, w, h, cw),
         fps as u32,
-        args.mode.name()
+        format!("{} / {:?}", args.mode.name(), depth).to_lowercase()
     );
 
     let stdout = io::stdout();
     let mut out = stdout.lock();
-    let mut painter = Painter::new(args.color, cw);
+    let mut painter = Painter::new(depth, cw);
     painter.start(&mut out).map_err(io_msg)?;
 
     let mut raw = vec![0u8; w * h * 3];
