@@ -1,0 +1,28 @@
+[package]
+name = "img2txt"
+version = "0.2.0"
+edition = "2021"
+description = "实时摄像头/图片 → 终端字符画（yaochao/img_to_txt 的 Rust 重写）"
+license = "MIT"
+repository = "https://github.com/dylan121322/img2txt-rs"
+readme = "README.md"
+
+[dependencies]
+# 纯 Rust 摄像头库（Windows 走 MediaFoundation，macOS 走 AVFoundation）
+# 不依赖 OpenCV，所以能在 GitHub Actions 上原生构建
+nokhwa = { version = "0.10", default-features = false, features = ["decoding", "input-native"] }
+terminal_size = "0.4"
+ctrlc = "3"
+
+[target.'cfg(windows)'.dependencies]
+# 打开 VT 转义序列 + 控制台 UTF-8（否则 ▀ 会变成乱码）
+windows-sys = { version = "0.59", features = [
+    "Win32_System_Console",
+    "Win32_Globalization",
+] }
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+strip = true
